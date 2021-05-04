@@ -1530,6 +1530,33 @@ void initializeUnivariateFOS()
   exit(0);
 }
 
+//void initializeUnivariateFOS()
+//{
+//    int i, j;
+//
+//    if( linkage_model != NULL )
+//    {
+//        for( i = 0; i < linkage_model_length; i++ )
+//            free( linkage_model[i] );
+//        free( linkage_model );
+//        free( linkage_model_number_of_indices );
+//    }
+//
+//    linkage_model_length = number_of_parameters; // TODO: length of a univariate factorization
+////  order = randomPermutation(number_of_parameters);
+//    linkage_model_number_of_indices = (int*) Malloc( linkage_model_length * sizeof(int) );
+//
+//    // TODO: Initialize linkage model to the univariate factorization
+//    for( i = 0; i < linkage_model_length; i++ )
+//    {
+//        linkage_model_number_of_indices[i] = 1; // TODO: Size of the ith FOS element
+//        for( j = 0; j < linkage_model_number_of_indices[i]; j++ )
+//        {
+//            linkage_model[i][j] = i; // TODO: Fill the jth position of the ith FOS element
+//        }
+//    }
+//}
+
 /**
  * Learns the linkage tree using the reciprocal nearest neighbor approach.
  */
