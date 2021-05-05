@@ -1504,58 +1504,36 @@ void makeOffspring()
 
 void initializeUnivariateFOS()
 {
-  int i, j;
-
-  if( linkage_model != NULL )
+  int i, j, *order;
+    if( linkage_model != NULL )
   {
-    for( i = 0; i < linkage_model_length; i++ )
-      free( linkage_model[i] );
-    free( linkage_model );
-    free( linkage_model_number_of_indices );
+      for( i = 0; i < linkage_model_length; i++ ) {
+          free( linkage_model[i] );
+      }
+      free( linkage_model );
+      free( linkage_model_number_of_indices );
   }
 
-  linkage_model_length = -1; // TODO: length of a univariate factorization
-  linkage_model_number_of_indices = (int*) Malloc( linkage_model_length * sizeof(int) );
+    linkage_model_length = number_of_parameters; // TODO: length of a univariate factorization (Done)
+
+    linkage_model_number_of_indices = (int*) Malloc( linkage_model_length * sizeof(int) );
+
+    order = randomPermutation(linkage_model_length);
+
+    linkage_model = (int **) Malloc( (linkage_model_length)*sizeof( int *) );
+
   // TODO: Initialize linkage model to the univariate factorization
   for( i = 0; i < linkage_model_length; i++ )
   {
-    linkage_model_number_of_indices[i] = -1; // TODO: Size of the ith FOS element
+      linkage_model_number_of_indices[i] = 1; // TODO: Size of the ith FOS element (Done, 1 because only 1 element)
+      linkage_model[i] = (int *) Malloc(linkage_model_number_of_indices[i] * sizeof(int ));
+
     for( j = 0; j < linkage_model_number_of_indices[i]; j++ )
 	{
-      linkage_model[i][j] = -1; // TODO: Fill the jth position of the ith FOS element
+      linkage_model[i][j] = order[i]; // TODO: Fill the jth position of the ith FOS element (Done, with random order)
     }
   }
-
-  printf("Univariate model is not implemented. Exiting program.\n");
-  exit(0);
 }
-
-//void initializeUnivariateFOS()
-//{
-//    int i, j;
-//
-//    if( linkage_model != NULL )
-//    {
-//        for( i = 0; i < linkage_model_length; i++ )
-//            free( linkage_model[i] );
-//        free( linkage_model );
-//        free( linkage_model_number_of_indices );
-//    }
-//
-//    linkage_model_length = number_of_parameters; // TODO: length of a univariate factorization
-////  order = randomPermutation(number_of_parameters);
-//    linkage_model_number_of_indices = (int*) Malloc( linkage_model_length * sizeof(int) );
-//
-//    // TODO: Initialize linkage model to the univariate factorization
-//    for( i = 0; i < linkage_model_length; i++ )
-//    {
-//        linkage_model_number_of_indices[i] = 1; // TODO: Size of the ith FOS element
-//        for( j = 0; j < linkage_model_number_of_indices[i]; j++ )
-//        {
-//            linkage_model[i][j] = i; // TODO: Fill the jth position of the ith FOS element
-//        }
-//    }
-//}
 
 /**
  * Learns the linkage tree using the reciprocal nearest neighbor approach.
