@@ -123,7 +123,8 @@ int main( int argc, char **argv );
 char    **population,                           /* Population solutions. */
         **offspring,                            /* Offspring solutions. */
          *best_prevgen_solution,                /* The best solution found in all previous generations. */
-         *best_ever_evaluated_solution;         /* The best ever evaluated solution. */
+         *best_ever_evaluated_solution,         /* The best ever evaluated solution. */
+         file_id;                              /* The id of the files used */
 short     write_generational_statistics,        /* Whether to compute and write statistics every generation (0 = no). */
           write_generational_solutions,         /* Whether to write the population every generation (0 = no). */
           print_verbose_overview,               /* Whether to print a overview of settings (0 = no). */
@@ -304,9 +305,9 @@ void parseParameters( int argc, char **argv, int *index )
 {
   int noError;
 
-  if( (argc - *index) != 5 )
+  if( (argc - *index) != 6 )
   {
-    printf("Number of parameters is incorrect, require 5 parameters (you provided %d).\n\n", (argc - *index));
+    printf("Number of parameters is incorrect, require 6 parameters (you provided %d).\n\n", (argc - *index));
 
     printUsage();
   }
@@ -317,6 +318,7 @@ void parseParameters( int argc, char **argv, int *index )
   noError = noError && sscanf( argv[*index+2], "%d", &population_size );
   noError = noError && sscanf( argv[*index+3], "%d", &maximum_number_of_evaluations );
   noError = noError && sscanf( argv[*index+4], "%lf", &fitness_variance_tolerance );
+  noError = noError && sscanf(argv[*index+5], "%c", &file_id);
 
   if( !noError )
   {
@@ -331,7 +333,7 @@ void parseParameters( int argc, char **argv, int *index )
  */
 void printUsage( void )
 {
-  printf("Usage: GOMEA [-?] [-P] [-s] [-w] [-v] [-l] [-r] pro dim pop eva vtr tol\n");
+  printf("Usage: GOMEA [-?] [-P] [-s] [-w] [-v] [-l] [-r] pro dim pop eva vtr tol unique_id\n");
   printf(" -?: Prints out this usage information.\n");
   printf(" -P: Prints out a list of all installed optimization problems.\n");
   printf(" -s: Enables computing and writing of statistics every generation.\n");
@@ -347,6 +349,7 @@ void printUsage( void )
   printf("  vtr: The value to reach. If the objective value of the best feasible solution reaches\n");
   printf("       this value, termination is enforced (if -r is specified).\n");
   printf("  tol: The tolerance level for fitness variance (i.e. minimum fitness variance)\n");
+  printf("  unique_id: The unique id used for the specific files on the fs, to enable parallelism (e.g. 5)\n");
   exit( 0 );
 }
 
@@ -483,7 +486,7 @@ char *installedProblemName( int index )
     case  2: return( (char *) "Deceptive Trap 4 - Loose Encoding" );
     case  3: return( (char *) "Deceptive Trap 5 - Tight Encoding" );
     case  4: return( (char *) "Deceptive Trap 5 - Loose Encoding" );
-    case  5: return( (char *) "MAXCUT (reads from file maxcut_instance.txt)" );
+    case  5: return( (char *) "MAXCUT (reads from file maxcut_instance_{unique_id}.txt)" );
   }
 
   return( NULL );
@@ -513,6 +516,7 @@ int numberOfInstalledProblems( void )
 void installedProblemEvaluation( int index, char *parameters, double *objective_value, double *constraint_value )
 {
   int i;
+  char filename_1[1000], filename_2[1000];
 
   number_of_evaluations++;
 
@@ -534,7 +538,9 @@ void installedProblemEvaluation( int index, char *parameters, double *objective_
     if( (*constraint_value) == 0 && (*objective_value) >= vtr  )
     {
       vtr_hit_has_happened = 1;
-      writeRunningTime( (char *) "vtr_hitting_time.dat" );
+        sprintf(filename_1, "vtr_hitting_time_%s.dat", &file_id);
+
+        writeRunningTime( filename_1 );
     }
   }
 
@@ -544,7 +550,13 @@ void installedProblemEvaluation( int index, char *parameters, double *objective_
       best_ever_evaluated_solution[i] = parameters[i];
     best_ever_evaluated_objective_value  = *objective_value;
     best_ever_evaluated_constraint_value = *constraint_value;
-    writeRunningTime( (char *) "best_ever_hitting_time.dat" );
+
+
+      sprintf(filename_2, "best_ever_hitting_time_%s.dat", &file_id);
+
+
+
+      writeRunningTime( (char *) filename_2 );
   }
 }
 
@@ -659,7 +671,8 @@ short maxcutReadInstanceFromFile()
   int   i, j, k, q, number_of_vertices;
   FILE *file;
 
-  sprintf( filename, "maxcut_instance.txt" );
+    sprintf(filename, "maxcut_instance_%s.txt", &file_id);
+
   file = fopen( filename, "r" );
   if( file == NULL )
     return( 0 );
@@ -1029,7 +1042,8 @@ void initializeValueToReach()
   int   i;
   FILE *file;
 
-  sprintf( filename, "vtr.txt" );
+    sprintf(filename, "vtr_%s.txt", &file_id);
+    printf("%s", filename);
   file = fopen( filename, "r" );
   if( file == NULL )
     use_vtr = 0;
@@ -1064,7 +1078,7 @@ void initializeValueToReach()
  */
 void writeGenerationalStatistics()
 {
-  char    string[10000];
+  char    string[10000], filename[1000];
   int     i;
   double  objective_avg, objective_var, objective_best, objective_worst,
           constraint_avg, constraint_var, constraint_best, constraint_worst;
@@ -1114,15 +1128,19 @@ void writeGenerationalStatistics()
 
   /* Then write them */
   file = NULL;
-  if( number_of_generations == 0 )
+
+    sprintf(filename, "statistics_%s.dat", &file_id);
+
+
+    if( number_of_generations == 0 )
   {
-    file = fopen( "statistics.dat", "w" );
+    file = fopen( filename, "w" );
 
     sprintf( string, "# Generation Evaluations      Average-obj.     Variance-obj.         Best-obj.        Worst-obj.        Elite-obj.      Average-con.     Variance-con.         Best-con.        Worst-con.        Elite-con.\n");
     fputs( string, file );
   }
   else
-    file = fopen( "statistics.dat", "a" );
+    file = fopen( filename, "a" );
 
   sprintf( string, "  %10d %11ld %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n", number_of_generations, number_of_evaluations, objective_avg, objective_var, objective_best, objective_worst, best_prevgen_objective_value, constraint_avg, constraint_var, constraint_best, constraint_worst, best_prevgen_constraint_value );
   fputs( string, file );
@@ -1147,9 +1165,9 @@ void writeGenerationalSolutions( char is_final_generation )
 
   /* Population */
   if( is_final_generation )
-    sprintf( filename, "population_generation_final.dat" );
+    sprintf( filename, "population_generation_final_%s.dat", &file_id );
   else
-    sprintf( filename, "population_generation_%05d.dat", number_of_generations );
+    sprintf( filename, "population_generation_%05d_%s.dat", number_of_generations, &file_id );
   file = fopen( filename, "w" );
   for( i = 0; i < population_size; i++ )
   {
@@ -1166,7 +1184,7 @@ void writeGenerationalSolutions( char is_final_generation )
   /* Offspring */
   if( (number_of_generations > 0) && (is_final_generation == FALSE) )
   {
-    sprintf( filename, "offspring_generation_%05d.dat", number_of_generations-1 );
+    sprintf( filename, "offspring_generation_%05d_%s.dat", number_of_generations-1, &file_id );
     file = fopen( filename, "w" );
 
     for( i = 0; i < offspring_size; i++ )
@@ -1207,9 +1225,9 @@ void writeGenerationalSolutionsBest( char is_final_generation )
 
   /* Then output it */
   if( is_final_generation == TRUE )
-    sprintf( filename, "best_generation_final.dat" );
+    sprintf( filename, "best_generation_final_%s.dat", &file_id);
   else
-    sprintf( filename, "best_generation_%05d.dat", number_of_generations );
+    sprintf( filename, "best_generation_%05d_%s.dat", number_of_generations, &file_id );
   file = fopen( filename, "w" );
 
   for( i = 0; i < number_of_parameters; i++ )
@@ -1232,12 +1250,14 @@ void writeGenerationalSolutionsBest( char is_final_generation )
  */
 void writeGenerationalSolutionsBestEver()
 {
-  char  string[10000];
+  char  string[10000], filename[1000];
   int   i;
   FILE *file;
 
+    sprintf(filename, "best_ever_%s.dat", &file_id);
+
   /* Then output it */
-  file = fopen( "best_ever.dat", "w" );
+  file = fopen( filename, "w" );
 
   for( i = 0; i < number_of_parameters; i++ )
   {
@@ -2110,7 +2130,12 @@ void run()
 
     updateBestPrevGenSolution();
   }
-  writeRunningTime( (char *) "total_running_time.dat" );
+  char filename[1000];
+
+    sprintf(filename, "total_running_time_%s.dat", &file_id);
+
+
+    writeRunningTime( filename);
 
   writeGenerationalStatistics();
 
