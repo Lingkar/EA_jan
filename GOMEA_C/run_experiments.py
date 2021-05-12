@@ -1,6 +1,8 @@
 import multiprocessing
 import subprocess
 import os
+import json
+import time
 
 
 # TU Delft CS4205 - Evolutionary Algorithms - Assignment 1
@@ -36,17 +38,18 @@ def runSingleExperiment(instance_info, pop, U, unique_file_name):
     # print('# Running GOMEA...')
 
     experiment_result = []
+    one_wrong = False
 
     for i in range(10):
         if U:
-            gomea_process = subprocess.Popen(['./GOMEA', '-U', '-s', str(pro), str(dim), str(pop), str(eva), str(tol), str(unique_file_name)],
-                                             stdout=subprocess.PIPE)
+            gomea_process = subprocess.Popen(
+                ['./GOMEA', '-U', '-s', str(pro), str(dim), str(pop), str(eva), str(tol), str(unique_file_name)],
+                stdout=subprocess.PIPE)
         else:
-            gomea_process = subprocess.Popen(['./GOMEA', '-s', str(pro), str(dim), str(pop), str(eva), str(tol), str(unique_file_name)],
-                                             stdout=subprocess.PIPE)
+            gomea_process = subprocess.Popen(
+                ['./GOMEA', '-s', str(pro), str(dim), str(pop), str(eva), str(tol), str(unique_file_name)],
+                stdout=subprocess.PIPE)
         gomea_process.wait()
-        # if (i == 0):
-        # print('# best_solution best_fitness constraint_value tot_time_ms num_eval')
         with open('best_ever_' + unique_file_name + '.dat') as f_elitist:
             with open('best_ever_hitting_time_' + unique_file_name + '.dat') as f_time:
                 l_elitist = f_elitist.readlines()
@@ -58,21 +61,27 @@ def runSingleExperiment(instance_info, pop, U, unique_file_name):
                 no_evals = int(info_time[1])
                 experiment_result.append(no_evals)
                 if fit != opt:
-                    return -1
+                    if one_wrong == True:
+                        return -1
+                    else:
+                        one_wrong = True
                 # print(l_elitist[-1].strip(), l_time[-1].strip())  # Last line of the results
     return experiment_result
 
 
-def binarySearchExperiment(instance_info, l, r, results, U, unique_file_id):
+def binarySearchExperiment(instance_info, l, r, min_index, results, U, unique_file_id, eval_result):
     if r >= l:
         mid = l + (r - l) // 2
         result = runSingleExperiment(instance_info, mid, U, unique_file_id)
         results[mid - 1] = -1 if result == -1 else 1
 
         if result == -1:
-            return binarySearchExperiment(instance_info, mid + 1, r, results, U, unique_file_id)
+            return binarySearchExperiment(instance_info, mid + 1, r, min_index, results, U, unique_file_id, eval_result)
         else:
-            return binarySearchExperiment(instance_info, l, mid - 1, results, U, unique_file_id)
+            if mid < min_index:
+                min_index = mid
+                eval_result = result
+            return binarySearchExperiment(instance_info, l, mid - 1, min_index, results, U, unique_file_id, eval_result)
 
     if l < len(results) and results[l - 1] != 1:
         print("Hypothesis failed: ")
@@ -81,37 +90,78 @@ def binarySearchExperiment(instance_info, l, r, results, U, unique_file_id):
         print(results)
     elif l > len(results):
         print("Whoops max population size was not enough...")
-    return l
+    return [l, eval_result]
 
 
 def findPopulation(problem):
     worker = multiprocessing.current_process().name.strip()[-1]
     print("Running: " + problem[2] + ", on worker: " + worker + "\n")
     results = [0] * max_population
-    result = binarySearchExperiment(problem, 1, max_population, results, use_univariate, worker)
+    result = [problem,
+              binarySearchExperiment(problem, 1, max_population, max_population * 2, results, problem[3], worker,
+                                     [])]
     print(result)
     return result
 
 
+start_time = time.time()
+
 # TODO:: Make these programm arguments
 # Variables to set
-directory = "../maxcut-instances/set0a/"
-max_population = 200
-use_univariate = True
+directory = "../maxcut-instances/set0a_50/"
+name_dir = directory.strip().split('/')[-2]
+max_population = 10000
+use_univariate = False
 
 problem_instances = []
 # List all the instances in directory for which experiments have to be ran
 for filename in os.listdir(directory):
     if filename.endswith(".txt"):
         instance_info_raw = filename[:-4][1:].lstrip('0').split('i')
-        instance_info = [int(instance_info_raw[0]), int(instance_info_raw[1]), filename[:-4]]
+        instance_info = [int(instance_info_raw[0]), int(instance_info_raw[1]), filename[:-4], use_univariate]
         problem_instances.append(instance_info)
         continue
 
 # Sort the instances based on the number of binary variables
 problem_instances.sort(key=lambda x: x[0])
 
-# TODO:: Do binary search over population size, and collect results
-
 p = multiprocessing.Pool()
-p.map(findPopulation, problem_instances)
+
+# for i in range(0, 10):
+#     total_result = p.map(findPopulation, problem_instances)
+#
+#     with open("./results/results_" + name_dir + "_maxP_" + str(max_population) + "_U_" + str(
+#             use_univariate) + "_iter_" + str(i) + ".json", 'w+') as f:
+#         json.dump(total_result, f, indent=2)
+#
+#     print("##### ITER", i, "RESULTS ##############")
+#     print("It took", time.time() - start_time, "seconds to run iter:", i)
+#     print("It took", (time.time() - start_time) / 60, "minutes to run iter:", i)
+#     print("It took", (time.time() - start_time) / 60 / 60, "hours to run iter:", i)
+#
+# print("##### FINAL RESULTS ##############")
+# print("It took", time.time() - start_time, "seconds to run")
+# print("It took", (time.time() - start_time)/60, "minutes to run")
+# print("It took", (time.time() - start_time)/60/60, "hours to run")
+
+use_univariate = True
+
+for problem in problem_instances:
+    problem[3] = use_univariate
+
+for i in range(0, 10):
+    total_result = p.map(findPopulation, problem_instances, use_univariate)
+
+    with open("./results/results_" + name_dir + "_maxP_" + str(max_population) + "_U_" + str(
+            use_univariate) + "_iter_" + str(i) + ".json", 'w+') as f:
+        json.dump(total_result, f, indent=2)
+
+    print("##### ITER", i, "RESULTS ##############")
+    print("It took", time.time() - start_time, "seconds to run iter:", i)
+    print("It took", (time.time() - start_time) / 60, "minutes to run iter:", i)
+    print("It took", (time.time() - start_time) / 60 / 60, "hours to run iter:", i)
+
+print("##### FINAL RESULTS ##############")
+print("It took", time.time() - start_time, "seconds to run")
+print("It took", (time.time() - start_time)/60, "minutes to run")
+print("It took", (time.time() - start_time)/60/60, "hours to run")
