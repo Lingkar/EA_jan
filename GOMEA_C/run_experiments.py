@@ -26,7 +26,6 @@ def runSingleExperiment(instance_info, pop, U, unique_file_name):
     # Parameters for GOMEA and EDA
     pro = 5  # Problem ID (5 for maxcut)
     dim = instance_info[0]  # Make sure this is the same as the problem instance.
-    # TODO:: Does the evaluation has to scale with the problem instances?
     eva = 1000000000000000000000  # Evaluation budget
     tol = 0
 
@@ -76,8 +75,10 @@ def binarySearchExperiment(instance_info, l, r, min_index, results, U, unique_fi
         results[mid - 1] = -1 if result == -1 else 1
 
         if result == -1:
+            print(mid, result)
             return binarySearchExperiment(instance_info, mid + 1, r, min_index, results, U, unique_file_id, eval_result)
         else:
+            print(mid, 1)
             if mid < min_index:
                 min_index = mid
                 eval_result = result
@@ -90,15 +91,16 @@ def binarySearchExperiment(instance_info, l, r, min_index, results, U, unique_fi
         print(results)
     elif l > len(results):
         print("Whoops max population size was not enough...")
+        return [-1]
     return [l, eval_result]
 
 
 def findPopulation(problem):
     worker = multiprocessing.current_process().name.strip()[-1]
     print("Running: " + problem[2] + ", on worker: " + worker + "\n")
-    results = [0] * max_population
+    results = [0] * problem[4]
     result = [problem,
-              binarySearchExperiment(problem, 1, max_population, max_population * 2, results, problem[3], worker,
+              binarySearchExperiment(problem, 1, problem[4], problem[4] * 2, results, problem[3], worker,
                                      [])]
     print(result)
     return result
@@ -106,11 +108,10 @@ def findPopulation(problem):
 
 start_time = time.time()
 
-# TODO:: Make these programm arguments
 # Variables to set
-directory = "../maxcut-instances/set0a_50/"
+directory = "../maxcut-instances/set0b_400/"
 name_dir = directory.strip().split('/')[-2]
-max_population = 10000
+max_population = 150
 use_univariate = False
 
 problem_instances = []
@@ -118,7 +119,7 @@ problem_instances = []
 for filename in os.listdir(directory):
     if filename.endswith(".txt"):
         instance_info_raw = filename[:-4][1:].lstrip('0').split('i')
-        instance_info = [int(instance_info_raw[0]), int(instance_info_raw[1]), filename[:-4], use_univariate]
+        instance_info = [int(instance_info_raw[0]), int(instance_info_raw[1]), filename[:-4], use_univariate, max_population]
         problem_instances.append(instance_info)
         continue
 
@@ -127,7 +128,26 @@ problem_instances.sort(key=lambda x: x[0])
 
 p = multiprocessing.Pool()
 
+for problem in problem_instances:
+    problem[3] = use_univariate
+    problem[4] = max_population
+
+max_population_set = False
+max_population_dic = {}
+
 # for i in range(0, 10):
+#     if i > 0 and not max_population_set:
+#         file = open("./results/results_" + name_dir + "_maxP_" + str(max_population) + "_U_" + str(
+#         use_univariate) + "_iter_0.json", 'r')
+#         data_iter0 = json.load(file)
+#         for result in data_iter0:
+#             max_population_dic[result[0][2]] = result[1][0]
+#
+#         for problem in problem_instances:
+#             if max_population_dic[problem[2]] * 3 < max_population:
+#                 problem[4] = max_population_dic[problem[2]] * 3
+#         max_population_set = True
+#
 #     total_result = p.map(findPopulation, problem_instances)
 #
 #     with open("./results/results_" + name_dir + "_maxP_" + str(max_population) + "_U_" + str(
@@ -144,13 +164,47 @@ p = multiprocessing.Pool()
 # print("It took", (time.time() - start_time)/60, "minutes to run")
 # print("It took", (time.time() - start_time)/60/60, "hours to run")
 
+problem_instances = []
+# List all the instances in directory for which experiments have to be ran
+
 use_univariate = True
+
+max_population = 12000
+
+for filename in os.listdir(directory):
+    if filename.endswith(".txt"):
+        instance_info_raw = filename[:-4][1:].lstrip('0').split('i')
+        instance_info = [int(instance_info_raw[0]), int(instance_info_raw[1]), filename[:-4], use_univariate, max_population]
+        if instance_info[0] < 101:
+            problem_instances.append(instance_info)
+        continue
+
+# Sort the instances based on the number of binary variables
+problem_instances.sort(key=lambda x: x[0])
 
 for problem in problem_instances:
     problem[3] = use_univariate
+    problem[4] = max_population
+
+max_population_set = False
+max_population_dic = {}
 
 for i in range(0, 10):
-    total_result = p.map(findPopulation, problem_instances, use_univariate)
+    if i > 0 and not max_population_set:
+        file = open("./results/results_" + name_dir + "_maxP_" + str(max_population) + "_U_" + str(
+        use_univariate) + "_iter_0.json", 'r')
+        data_iter0 = json.load(file)
+        for result in data_iter0:
+            max_population_dic[result[0][2]] = result[1][0]
+
+        for problem in problem_instances:
+            if max_population_dic[problem[2]] * 3 < max_population:
+                problem[4] = max_population_dic[problem[2]] * 3
+        max_population_set = True
+
+    problem_instances = 10 * problem_instances
+    print(problem_instances)
+    total_result = p.map(findPopulation, problem_instances)
 
     with open("./results/results_" + name_dir + "_maxP_" + str(max_population) + "_U_" + str(
             use_univariate) + "_iter_" + str(i) + ".json", 'w+') as f:

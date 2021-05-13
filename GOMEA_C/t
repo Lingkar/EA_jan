@@ -1,8 +1,6 @@
-gcc -o GOMEA GOMEA.c -lm
-
-cp ../maxcut-instances/set0a/n0000012i00.txt maxcut_instance.txt
-cp ../maxcut-instances/set0a/n0000012i00.bkv vtr.txt
-./GOMEA -U -v -s 5 12 100 10000 0
-cat best_ever.dat
-cat best_ever_hitting_time.dat
+cp ../maxcut-instances/set0a/n0000012i00.txt maxcut_instance_4.txt
+cp ../maxcut-instances/set0a/n0000012i00.bkv vtr_4.txt
+./GOMEA -U -v -s 5 12 100 10000 0 4
+cat best_ever_4.dat
+cat best_ever_hitting_time_4.dat
 

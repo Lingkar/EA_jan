@@ -2,17 +2,18 @@ import json
 import os
 import statistics as stat
 
-directory = "./results-a/"
+directory = "./results/"
 results = {}
 maxPop = 0
 for filename in os.listdir(directory):
     file = open(directory + filename, 'r')
     test = json.load(file)
     for i in test:
-        if not i[0][3]:
+        print(i)
+        if i[0][3]:
             no_variables = i[0][0]
             population_size = i[1][0]
-            if(population_size > maxPop):
+            if population_size > maxPop:
                 maxPop = population_size
             evaluations = i[1][1]
             if no_variables in results:
@@ -21,6 +22,7 @@ for filename in os.listdir(directory):
             else:
                 results[no_variables] = {"population_size": [population_size], "evaluations": evaluations}
 
+print(results)
 print("problem size:", 6)
 print("Population stats")
 print(stat.mean(results[6]['population_size']))

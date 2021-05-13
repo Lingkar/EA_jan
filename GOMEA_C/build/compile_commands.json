@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/lingkar/computer_science/MSc/evolutionary_algorithms/Assignment_1/GOMEA_C/build",
+  "command": "/usr/bin/clang-9 -g -std=gnu11 -o CMakeFiles/GOMEA_C.dir/GOMEA.c.o -c /home/lingkar/computer_science/MSc/evolutionary_algorithms/Assignment_1/GOMEA_C/GOMEA.c",
+  "file": "/home/lingkar/computer_science/MSc/evolutionary_algorithms/Assignment_1/GOMEA_C/GOMEA.c"
+}
+]
